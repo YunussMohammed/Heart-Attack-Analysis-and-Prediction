@@ -1,0 +1,256 @@
+##Loading File
+Heart<-read.csv("Heart.csv", sep = ",", head = T)
+Heart<-na.omit(Heart)
+
+##Referencing some key variables
+age<-Heart[,1]
+sex<-Heart[,2]
+chol<-Heart[,5]
+
+##Creating Interaction Variables
+Heart$sexage <- sex*age
+Heart$sexchol <- sex*chol
+
+##Defining x for LASSO (1st specificatio)
+x <- model.matrix(output ~ ., data = Heart)[, -c(15:17)]
+
+##Data frame and x for LASSO (2nd specification)
+Heart2 <- select(Heart, -c('sexchol', 'sexage', 'slp'))
+
+x2 <- model.matrix(output ~ ., data = Heart2)[,-13]
+
+## Data frame and x for LASSO (3rd specification)
+Heart3 <-select(Heart, -c('slp'))
+x3 <- model.matrix(output ~ ., data = Heart3)[,-13]
+
+##Defining Y
+y <- Heart$output
+
+##Converting CA to a categorical variable
+heart$cp <- as.factor(heart$cp)
+class(heart$cp)
+
+##Correlation plot
+corrplot(Heart)
+
+
+##LASSO 1
+Heart.lasso<- glmnet(x, y,
+ alpha = 1, family = "binomial")
+plot(Heart.lasso)
+set.seed(1)
+Heart.lasso.cv10 <- cv.glmnet(x, y,
+ alpha = 1,
+ family = "binomial")
+cbind("Lambda" = Heart.lasso.cv10$lambda,
+ "10FCV" = Heart.lasso.cv10$cvm)
+plot(Heart.lasso.cv10)
+
+Heart.best.lambda <- Heart.lasso.cv10$lambda.min
+min.cv.Lasso <- min(Heart.lasso.cv10$cvm)
+round(
+ cbind("Best Lambda" = Heart.best.lambda,
+ "Best Log Lambda" = log(Heart.best.lambda),
+ "Best 10FCV" = min.cv.lasso),
+ digits = 3)
+
+lasso.coef <- coef(Heart.lasso, s = Heart.best.lambda)
+lasso.coef.0 <- coef(Heart.lasso, s = 0)
+
+all.coefs <- round(cbind(lasso.coef,
+ exp(lasso.coef),
+lasso.coef.0,
+exp(lasso.coef.0)),
+ digits = 3)
+colnames(all.coefs) <- c("Best LASSO", "Odds", "0-Lambda LASSO", "0dds")
+all.coefs
+
+#LASSO 2
+Heart.lasso2<- glmnet(x2, y,
+ alpha = 1, family = "binomial")
+plot(Heart.lasso2)
+set.seed(1)
+Heart.lasso2.cv10 <- cv.glmnet(x2, y,
+ alpha = 1,
+ family = "binomial")
+cbind("Lambda" = Heart.lasso2.cv10$lambda,
+ "10FCV" = Heart.lasso2.cv10$cvm)
+plot(Heart.lasso2.cv10)
+
+Heart2.best.lambda <- Heart.lasso2.cv10$lambda.min
+min.cv.lasso2 <- min(Heart.lasso2.cv10$cvm)
+round(
+ cbind("Best Lambda" = Heart2.best.lambda,
+ "Best Log Lambda" = log(Heart2.best.lambda),
+ "Best 10FCV" = min.cv.lasso2),
+ digits = 3)
+
+lasso2.coef <- coef(Heart.lasso2, s = Heart2.best.lambda)
+lasso2.coef.0 <- coef(Heart.lasso2, s = 0)
+
+all.coefs2 <- round(cbind(lasso2.coef,
+ exp(lasso2.coef),
+lasso2.coef.0,
+exp(lasso2.coef.0)),
+ digits = 3)
+colnames(all.coefs2) <- c("Best LASSO", "Odds", "0-Lambda LASSO", "0dds")
+all.coefs2
+
+##LASSO 3
+Heart.lasso3<- glmnet(x3, y,
+ alpha = 1, family = "binomial")
+plot(Heart.lasso3)
+set.seed(1)
+Heart.lasso3.cv10 <- cv.glmnet(x3, y,
+ alpha = 1,
+ family = "binomial")
+cbind("Lambda" = Heart.lasso3.cv10$lambda,
+ "10FCV" = Heart.lasso3.cv10$cvm)
+plot(Heart.lasso3.cv10)
+
+Heart3.best.lambda <- Heart.lasso3.cv10$lambda.min
+min.cv.lasso3 <- min(Heart.lasso3.cv10$cvm)
+round(
+ cbind("Best Lambda" = Heart3.best.lambda,
+ "Best Log Lambda" = log(Heart3.best.lambda),
+ "Best 10FCV" = min.cv.lasso3),
+ digits = 3)
+
+lasso3.coef <- coef(Heart.lasso3, s = Heart3.best.lambda)
+lasso3.coef.0 <- coef(Heart.lasso3, s = 0)
+
+all.coefs3 <- round(cbind(lasso3.coef,
+ exp(lasso3.coef),
+lasso3.coef.0,
+exp(lasso3.coef.0)),
+ digits = 3)
+colnames(all.coefs3) <- c("Best LASSO", "Odds", "0-Lambda LASSO", "0dds")
+all.coefs3
+
+
+## LOGIT 1
+heart.fit <- glm(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + 
+                 oldpeak + slp + caa + thall,
+                 data = Heart, 
+                 family = binomial(link = "logit")) 
+heart.fit
+#logit prediction
+cv.heart.fit <- cv.glm(Heart,heart.fit,K=10)
+print(cv.heart.fit$delta[1], digits = 5) 
+coefplot(heart.fit)
+
+summary(heart.fit)
+## LOGIT 2
+heart.fit2 <- glm(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + 
+                 oldpeak + caa + thall,
+                 data = Heart2, 
+                 family = binomial(link = "logit")) 
+heart.fit2
+#logit prediction
+cv.heart.fit2 <- cv.glm(Heart2,heart.fit2,K=10)
+print(cv.heart.fit2$delta[1], digits = 5) 
+                
+ ## LOGIT 3
+heart.fit3 <- glm(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + 
+                 oldpeak + caa + thall + sexage +sexchol,
+                 data = Heart3, 
+                 family = binomial(link = "logit")) 
+heart.fit3
+#logit prediction
+cv.heart.fit3 <- cv.glm(Heart3,heart.fit3,K=10)
+print(cv.heart.fit3 $delta[1], digits = 5) 
+                 
+                 
+
+##CLASSIFICATION TREES
+set.seed(12345)
+
+## Traing sample with 70% of dataset to calculate best mindev
+training <- sample(1:nrow(Heart), 0.7*nrow(Heart))
+Heart.training <- Heart[training,-y]
+Heart.training.results <- Heart[training,y] > 0.5
+Heart.test <- Heart[-training,-y]
+Heart.test.results <- Heart[-training,y] > 0.5
+best.mindev <- -1
+error.rate <- -1
+best.error.rate <- 99999999
+for (i in seq(from=0.0005, to=0.05, by=0.0005)) {
+  Heart.tree <- tree(output ~ ., data=Heart[training,], mindev=i)
+  Heart.tree.proportions <- predict(Heart.tree,Heart[-training,])
+  Heart.tree.classifications <- round(Heart.tree.proportions,0)
+  error.rate <- 1- (sum(Heart.tree.classifications == Heart.test.results) / nrow(Heart[-training,]))
+  if (error.rate < best.error.rate) {
+    best.mindev <- i
+    best.error.rate <- error.rate
+  }
+}
+print(paste("The optimal value of mindev is",best.mindev,"with an overall error rate of",best.error.rate))
+
+##CLASS TREE 1
+## Just making sure output is a factor
+Heart$output <- as.factor(Heart$output)
+Heart.tree <- tree(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + 
+                 oldpeak + slp + caa + thall, heart, mindev = best.mindev) 
+plot(Heart.tree)
+text(Heart.tree, cex=0.5)
+
+set.seed(1)
+Heart.cv.tree <- cv.tree(Heart.tree)
+Heart.cv.tree
+
+min.mse.tree <- min(Heart.cv.tree$dev) 
+min.rmse.tree <- sqrt(min.mse.tree)
+
+cbind("Smallest MSE" = min.mse.tree,
+      "Smallest RMSE" = min.rmse.tree)
+      
+
+##CLASS TREE 2
+Heart2.tree <- tree(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + 
+                 oldpeak + caa + thall, Heart2, mindev = best.mindev) 
+plot(Heart2.tree)
+text(Heart2.tree, cex=0.5)
+
+set.seed(1)
+Heart2.cv.tree <- cv.tree(Heart2.tree)
+Heart2.cv.tree
+
+min.mse.tree2 <- min(Heart2.cv.tree$dev) 
+min.rmse.tree2 <- sqrt(min.mse.tree2)
+
+cbind("Smallest MSE" = min.mse.tree2,
+      "Smallest RMSE" = min.rmse.tree2)
+      
+##CLASS TREE 3
+Heart3.tree <- tree(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + 
+                 oldpeak + caa + thall + sexage +sexchol,
+                  Heart3, mindev = best.mindev) 
+plot(Heart3.tree)
+text(Heart3.tree, cex=0.5)
+
+set.seed(1)
+Heart3.cv.tree <- cv.tree(Heart3.tree)
+Heart3.cv.tree
+
+min.mse.tree3 <- min(Heart3.cv.tree$dev) 
+min.rmse.tree3 <- sqrt(min.mse.tree3)
+
+cbind("Smallest MSE" = min.mse.tree3,
+      "Smallest RMSE" = min.rmse.tree3)
+
+
+##Final LOGIT model interpretation
+log.odds <- coef(heart.fit) 
+odds <- exp(log.odds) 
+print(cbind("Log-Odds" = log.odds, "Odds" = odds), digits = 2)
+
+
+
+
+
+
+
+
+
+
+
